@@ -52,41 +52,51 @@ func (p *PasswordHash) SetEncryptCost(value int) *PasswordHash {
 }
 
 // Make creates a new hash/salt combo from the input
-func (p PasswordHash) Make(rawPassword string) (string, string) {
+func (p PasswordHash) Make(rawPassword string) (string, string, error) {
 	salt := p.generateSalt(p.SaltLength)
 	saltedPass := p.combine(salt, rawPassword)
-	password := p.hashPassword(saltedPass)
-	password = p.addRehashDate(password)
+	password, err := p.hashPassword(saltedPass)
 
-	return password, salt
+	if err != nil {
+		return "", "", err
+	}
+
+	return p.addRehashDate(password), salt, nil
 }
 
 // Match checks whether or not the correct password has been provided
-func (p PasswordHash) Match(rawPassword string, hashedPassword string, salt string) bool {
+func (p PasswordHash) Match(rawPassword string, hashedPassword string, salt string) (bool, error) {
 	saltedGuess := p.combine(salt, rawPassword)
-	_, pass := p.getPasswordAndDate(hashedPassword)
+	_, pass, err := p.getPasswordAndDate(hashedPassword)
+	if err != nil {
+		return false, err
+	}
 
-	return bcrypt.CompareHashAndPassword([]byte(pass), []byte(saltedGuess)) == nil
+	return bcrypt.CompareHashAndPassword([]byte(pass), []byte(saltedGuess)) == nil, nil
 }
 
 // RehashNeeded checks if it is time to rehash the password
-func (p PasswordHash) RehashNeeded(hashedPassword string) bool {
-	date, _ := p.getPasswordAndDate(hashedPassword)
+func (p PasswordHash) RehashNeeded(hashedPassword string) (bool, error) {
+	date, _, err := p.getPasswordAndDate(hashedPassword)
+	if err != nil {
+		return false, err
+	}
+
 	rehashTime, err := time.Parse(dateFormat, date)
 	if err != nil {
-		panic(err)
+		return false, err
 	}
 
-	return time.Now().Before(rehashTime)
+	return time.Now().Before(rehashTime), nil
 }
 
-func (p PasswordHash) hashPassword(saltedPassword string) string {
+func (p PasswordHash) hashPassword(saltedPassword string) (string, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(saltedPassword), p.EncryptCost)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 
-	return string(hashedPassword)
+	return string(hashedPassword), nil
 }
 
 func (PasswordHash) combine(salt string, rawPassword string) string {
@@ -115,13 +125,14 @@ func (p PasswordHash) getDateString() string {
 	return time.Now().Add(addedTime).Format(dateFormat)
 }
 
-func (PasswordHash) getPasswordAndDate(hashedPassword string) (string, string) {
+func (PasswordHash) getPasswordAndDate(hashedPassword string) (string, string, error) {
 	splitted := strings.SplitN(hashedPassword, ".", 2)
 	if len(splitted) != 2 {
-		panic(errors.New("Invalid hashed password format"))
+		return "", "", errors.New("Invalid hashed password format")
 	}
 
 	date := splitted[0]
 	password := splitted[1]
-	return date, password
+
+	return date, password, nil
 }
