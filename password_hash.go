@@ -101,8 +101,7 @@ func (p PasswordHash) hashPassword(saltedPassword string) (string, error) {
 
 func (PasswordHash) combine(salt string, rawPassword string) string {
 	pieces := []string{salt, rawPassword}
-	saltedPassword := strings.Join(pieces, "")
-	return saltedPassword
+	return strings.Join(pieces, "")
 }
 
 func (PasswordHash) generateSalt(length int) string {
