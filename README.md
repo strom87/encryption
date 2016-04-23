@@ -26,8 +26,10 @@ if err != nil {
 
 if ok {
     // Password is correct
+    
     if p.RehashNeeded(hashedPassword) {
         newHashedPassword, salt, _ := p.Make(userInputPassword)
+        
         // Update hased password and salt in database
     }
 } else {
@@ -50,10 +52,7 @@ p.RehashDays = 4
 
 ### Changing default values with chaining
 ```go
-p := encryption.NewPasswordHash()
-.SetEncryptCost(16)
-.SetSaltLength(20)
-.SetRehashDays(7)
+p := encryption.NewPasswordHash().SetEncryptCost(16).SetSaltLength(20).SetRehashDays(7)
 ```
 
 # AES advanced encryption standard
@@ -73,5 +72,9 @@ The key needs to be a **32** characters long string.
 ```go
 key := "LbF42s8rFNxJ@c2So26Aw!3q?#v?CXi3"
 
-a := NewAes(key)
+a := encryption.NewAes(key)
+
+encryptedText, err := a.Encrypt("Text to be encrypted")
+
+decryptedText, err := a.Decrypt(encryptedText)
 ```
